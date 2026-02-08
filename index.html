@@ -224,6 +224,7 @@
     <button id="themeBtn" title="Toggle light/dark">Light</button>
     <button id="newBtn" class="primary">New</button>
     <button id="saveBtn" class="primary" disabled>Save</button>
+    <button id="importBtn" disabled>Import .txt</button>
     <button id="exportBtn" disabled>Export .txt</button>
     <button id="pickFolderBtn">Folder</button>
     <button id="lockBtn">Lock</button>
@@ -271,7 +272,7 @@
           </div>
 
           <div class="hint">
-            Ctrl/Cmd+S = Save • Ctrl/Cmd+N = New • Export joins pages with a blank line.
+            Ctrl/Cmd+S = Save • Ctrl/Cmd+N = New • Export joins pages with —— between pages.
           </div>
           <div class="hint kanbanHint">Tip: Click a page tile to edit it in writing mode.</div>
         </div>
@@ -340,6 +341,8 @@
       <p class="hint" id="apiHint" style="margin-top:10px;"></p>
     </div>
   </div>
+
+  <input id="importInput" type="file" accept=".txt,text/plain" style="display:none;" />
 
 <script>
 (() => {
@@ -484,6 +487,15 @@
     return [String(text ?? '')];
   }
 
+  const PAGE_SEPARATOR = '——';
+  const EXPORT_SEPARATOR = `\n\n${PAGE_SEPARATOR}\n\n`;
+  const IMPORT_SEPARATOR = new RegExp(`\\n\\s*${PAGE_SEPARATOR}\\s*\\n`, 'g');
+  function splitImportedText(text){
+    const normalized = String(text ?? '').replace(/\r\n/g, '\n');
+    const parts = normalized.split(IMPORT_SEPARATOR);
+    return parts.length ? parts : [''];
+  }
+
   // State
   const state = {
     storageMode:'local',
@@ -513,6 +525,7 @@
     status: $('status'),
     filenameHint: $('filenameHint'),
     folderPill: $('folderPill'),
+    importInput: $('importInput'),
 
     toggleSidebarBtn: $('toggleSidebarBtn'),
     toggleWritingBtn: $('toggleWritingBtn'),
@@ -521,6 +534,7 @@
     themeBtn: $('themeBtn'),
     newBtn: $('newBtn'),
     saveBtn: $('saveBtn'),
+    importBtn: $('importBtn'),
     exportBtn: $('exportBtn'),
     pickFolderBtn: $('pickFolderBtn'),
     lockBtn: $('lockBtn'),
@@ -593,6 +607,7 @@
     ui.newBtn.disabled = isLocked;
     ui.refreshBtn.disabled = isLocked;
     ui.search.disabled = isLocked;
+    ui.importBtn.disabled = isLocked;
 
     ui.saveBtn.disabled = isLocked || !state.current.dirty;
     ui.exportBtn.disabled = isLocked || !state.current.fileName;
@@ -969,7 +984,7 @@
     commitEditorToCurrentPage();
     const title = (ui.title.value.trim() || 'note');
     const suggested = sanitizeFileBase(title) + '.txt';
-    const text = state.current.pages.join('\n\n');
+    const text = state.current.pages.join(EXPORT_SEPARATOR);
 
     if (window.showSaveFilePicker){
       try{
@@ -992,6 +1007,37 @@
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2500);
     setStatus('Exported (download).');
+  }
+
+  async function importTxt(file){
+    if (!file) return;
+    if (state.current.dirty){
+      const proceed = confirm('You have unsaved changes. Discard and import?');
+      if (!proceed) return;
+    }
+    const text = await file.text();
+    const pages = splitImportedText(text);
+
+    state.current.fileName = null;
+    state.current.fileHandle = null;
+    state.current.created = null;
+    state.current.modified = null;
+    state.current.pages = pages.length ? pages : [''];
+    state.current.pageIndex = 0;
+
+    const baseName = file.name.replace(/\.txt$/i, '').trim();
+    ui.title.value = baseName ? sanitizeFileBase(baseName) : nextNoteTitle();
+    ui.filenameHint.textContent = '—';
+    ui.editor.value = state.current.pages[0] ?? '';
+
+    markDirty(true);
+    ui.exportBtn.disabled = true;
+    ui.deleteBtn.disabled = true;
+
+    renderPageInfo();
+    renderList();
+    setStatus('Imported .txt.');
+    ui.editor.focus();
   }
 
   async function deleteCurrent(){
@@ -1215,6 +1261,11 @@
 
   ui.newBtn.onclick = () => newNote();
   ui.saveBtn.onclick = () => saveNote();
+  ui.importBtn.onclick = () => {
+    if (state.locked) return;
+    ui.importInput.value = '';
+    ui.importInput.click();
+  };
   ui.exportBtn.onclick = () => exportTxt();
   ui.pickFolderBtn.onclick = () => pickFolderAnytime();
   ui.lockBtn.onclick = () => lockNow();
@@ -1225,6 +1276,11 @@
 
   ui.title.addEventListener('input', () => markDirty(true));
   ui.editor.addEventListener('input', () => markDirty(true));
+  ui.importInput.addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await importTxt(file);
+  });
 
   ui.prevPageBtn.onclick = () => gotoPage(state.current.pageIndex - 1);
   ui.nextPageBtn.onclick = () => gotoPage(state.current.pageIndex + 1);
