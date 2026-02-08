@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Whriter</title>
+  <style>
+    :root{
+      --bg:#0f1115; --panel:#151922; --panel2:#0c0f14; --text:#e9edf5; --muted:#9aa6bf; --line:#2a3242; --accent:#6aa6ff;
+      --btn:#1c2230; --btn2:#22314d; --dangerbg:#2a1a1a; --dangerline:#6b2b2b; --input:#0f1420;
+    }
+    [data-theme="light"]{
+      --bg:#f6f7fb; --panel:#ffffff; --panel2:#ffffff; --text:#0e1116; --muted:#4f5b74; --line:#d6dbe6; --accent:#2b66ff;
+      --btn:#f2f4fa; --btn2:#e8efff; --dangerbg:#ffecec; --dangerline:#ffb4b4; --input:#ffffff;
+    }
+    *{ box-sizing:border-box; }
+    body{ margin:0; font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--text); }
+    button,input,textarea{ font:inherit; color:inherit; }
+    button{ background:var(--btn); border:1px solid var(--line); padding:8px 10px; border-radius:10px; cursor:pointer; }
+    button:hover{ border-color: color-mix(in srgb, var(--line) 40%, var(--text)); }
+    button.primary{ background:var(--btn2); border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+    button.danger{ background:var(--dangerbg); border-color:var(--dangerline); }
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+    input{ background:var(--input); border:1px solid var(--line); padding:10px; border-radius:10px; width:100%; }
+    textarea{ width:100%; height:100%; resize:none; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:12px; color:var(--text); }
+
+    .topbar{
+      display:flex; gap:10px; align-items:center; padding:10px;
+      border-bottom:1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 80%, transparent);
+      position:sticky; top:0; backdrop-filter: blur(6px);
+    }
+    .brand{ font-weight:700; letter-spacing:.2px; margin-left:2px; }
+    .spacer{ flex:1; }
+    .pill{ font-size:12px; padding:4px 8px; border:1px solid var(--line); border-radius:999px; color:var(--muted); }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    .wrap{ display:flex; height: calc(100vh - 52px); }
+    .sidebar{
+      width:280px; min-width:240px; max-width:40vw;
+      border-right:1px solid var(--line); background:var(--panel);
+      display:flex; flex-direction:column;
+    }
+    .sidebar.hidden{ display:none; }
+    .sidebar-head{ padding:10px; display:flex; gap:10px; align-items:center; border-bottom:1px solid var(--line); }
+    .list{ overflow:auto; padding:8px; }
+    .item{
+      padding:10px; border:1px solid transparent; border-radius:10px; cursor:pointer;
+      display:flex; gap:8px; align-items:center;
+    }
+    .item:hover{ background: color-mix(in srgb, var(--panel) 70%, var(--accent) 6%); border-color: color-mix(in srgb, var(--line) 60%, transparent); }
+    .item.active{ background: color-mix(in srgb, var(--accent) 14%, var(--panel)); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+    .item .dot{ width:8px; height:8px; border-radius:50%; background: color-mix(in srgb, var(--muted) 60%, transparent); }
+    .item.active .dot{ background: var(--accent); }
+    .item .name{ flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .item .sub{ font-size:12px; color:var(--muted); white-space:nowrap; }
+
+    .main{ flex:1; display:flex; flex-direction:column; padding:10px; gap:10px; min-width:0; }
+    .row{ display:flex; gap:10px; align-items:center; }
+    .grow{ flex:1 1 auto; min-width:0; }
+    .hint{ color:var(--muted); font-size:12px; }
+    .status{ padding:8px 10px; border:1px solid var(--line); border-radius:10px; background: color-mix(in srgb, var(--panel) 70%, var(--bg)); color:var(--muted); }
+    .editorWrap{ flex:1 1 auto; display:flex; gap:10px; min-height:0; min-width:0; }
+
+    .editorCol{ flex:1 1 auto; display:flex; flex-direction:column; gap:10px; min-width:0; min-height:0; }
+    .editorCol.hidden{ display:none; }
+
+    .pagebar{
+      display:flex; gap:8px; align-items:center;
+      padding:8px; border:1px solid var(--line); border-radius:12px;
+      background: color-mix(in srgb, var(--panel) 75%, var(--bg));
+    }
+    .pagebar .pageTitle{
+      flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      color:var(--muted); font-size:12px;
+    }
+
+    .rightbar{
+      width:260px; min-width:220px; max-width:32vw;
+      border-left:1px solid var(--line);
+      background:var(--panel);
+      border-radius:14px;
+      padding:12px;
+      height: fit-content;
+      align-self:flex-start;
+    }
+    .rightbar.hidden{ display:none; }
+    .rightbar h3{ margin:0 0 10px 0; font-size:13px; color:var(--muted); letter-spacing:.3px; text-transform:uppercase; }
+    .control{ margin:10px 0; }
+    .control .top{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
+    .control .top .k{ color:var(--muted); font-size:12px; }
+    .control .top .v{ color:var(--muted); font-size:12px; }
+    input[type="range"]{ width:100%; }
+
+    .modalBack{ position:fixed; inset:0; background: rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; padding:16px; }
+    [data-theme="light"] .modalBack{ background: rgba(0,0,0,.45); }
+    .modal{ width:min(520px,100%); background: var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px; }
+    .modal h2{ margin:0 0 8px 0; font-size:16px; }
+    .modal p{ margin:6px 0; color:var(--muted); }
+    .actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }
+
+    /* Fullscreen writing mode (layout) */
+    body.fs-write .topbar,
+    body.fs-write .sidebar,
+    body.fs-write .rightbar,
+    body.fs-write .row,
+    body.fs-write .hint { display:none !important; }
+    body.fs-write .wrap { height: 100vh; }
+    body.fs-write .main { padding: 10px; gap:10px; }
+    body.fs-write .editorWrap { height: 100%; }
+    body.fs-write .editorCol { height: 100%; }
+    body.fs-write textarea { border-radius: 14px; }
+
+    .fsExitBtn{
+      position:fixed; top:10px; right:10px; z-index:9999;
+      display:none;
+    }
+    body.fs-write .fsExitBtn{ display:inline-flex; }
+  </style>
+</head>
+
+<body data-theme="dark">
+  <button id="fsExitBtn" class="fsExitBtn">Exit fullscreen</button>
+
+  <div class="topbar">
+    <button id="toggleSidebarBtn" title="Hide/Show list">☰</button>
+    <button id="toggleWritingBtn" title="Hide/Show writing">✎</button>
+    <button id="toggleRightBtn" title="Hide/Show controls">⚙</button>
+
+    <div class="brand">Whriter</div>
+    <div class="pill" id="folderPill">No folder</div>
+    <div class="spacer"></div>
+
+    <button id="themeBtn" title="Toggle light/dark">Light</button>
+    <button id="newBtn" class="primary">New</button>
+    <button id="saveBtn" class="primary" disabled>Save</button>
+    <button id="exportBtn" disabled>Export .txt</button>
+    <button id="pickFolderBtn">Folder</button>
+    <button id="lockBtn">Lock</button>
+  </div>
+
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <input id="search" placeholder="Search…" />
+      </div>
+      <div class="list" id="fileList"></div>
+      <div style="padding:10px; border-top:1px solid var(--line); display:flex; gap:10px;">
+        <button id="refreshBtn">Refresh</button>
+        <button id="deleteBtn" class="danger" disabled>Delete</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="row">
+        <div class="grow">
+          <input id="title" placeholder="Title…" disabled />
+          <div class="hint" style="margin-top:6px;">
+            File: <span class="mono" id="filenameHint">—</span>
+          </div>
+        </div>
+        <div class="status" id="status">Locked.</div>
+      </div>
+
+      <div class="editorWrap">
+        <div class="editorCol" id="editorCol">
+          <div class="pagebar">
+            <button id="prevPageBtn" title="Previous page" disabled>◀</button>
+            <button id="nextPageBtn" title="Next page" disabled>▶</button>
+            <button id="addPageBtn" class="primary" title="Add page" disabled>+ Page</button>
+            <button id="delPageBtn" class="danger" title="Delete page" disabled>−</button>
+            <div class="spacer"></div>
+            <div class="pageTitle" id="pageInfo">Page — / —</div>
+          </div>
+
+          <textarea id="editor" placeholder="note" disabled></textarea>
+
+          <div class="hint">
+            Ctrl/Cmd+S = Save • Ctrl/Cmd+N = New • Export joins pages with a blank line.
+          </div>
+        </div>
+
+        <aside class="rightbar" id="rightbar" aria-label="Writing controls">
+          <h3>Writing</h3>
+
+          <div class="control">
+            <div class="top">
+              <div class="k">Font size</div>
+              <div class="v"><span id="fontSizeVal">16</span>px</div>
+            </div>
+            <input id="fontSize" type="range" min="12" max="28" value="16" />
+          </div>
+
+          <div class="control">
+            <div class="top">
+              <div class="k">Margins</div>
+              <div class="v"><span id="marginVal">14</span>px</div>
+            </div>
+            <input id="margin" type="range" min="0" max="80" value="14" />
+          </div>
+
+          <div class="control" style="margin-top:14px;">
+            <button id="fsWriteBtn" class="primary" style="width:100%;">Fullscreen writing</button>
+            <div class="hint" style="margin-top:8px;">Press Esc to exit.</div>
+          </div>
+
+          <div class="hint" style="margin-top:14px;">Settings are local to this browser.</div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <!-- Setup / Unlock Modal -->
+  <div class="modalBack" id="modalBack">
+    <div class="modal">
+      <h2 id="modalTitle">Welcome</h2>
+
+      <div id="setupBlock">
+        <p>First run: choose a password and a folder for your notes.</p>
+        <label class="hint">Password</label>
+        <input id="setupPw" type="password" autocomplete="new-password" />
+        <div style="height:10px"></div>
+        <button id="setupPickFolder" class="primary">Choose folder…</button>
+        <div class="hint" id="setupFolderLabel" style="margin-top:6px;">No folder chosen</div>
+      </div>
+
+      <div id="unlockBlock" style="display:none;">
+        <p>Enter your password.</p>
+        <label class="hint">Password</label>
+        <input id="unlockPw" type="password" autocomplete="current-password" />
+        <p class="hint" id="unlockHint"></p>
+      </div>
+
+      <div class="actions">
+        <button id="modalCancel">Close</button>
+        <button id="modalOk" class="primary">Continue</button>
+      </div>
+
+      <p class="hint" id="apiHint" style="margin-top:10px;"></p>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  function b64(bytes){ const bin = Array.from(bytes, b=>String.fromCharCode(b)).join(''); return btoa(bin); }
+  function ub64(str){ const bin = atob(str); const out = new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i); return out; }
+  function randBytes(n){ const u=new Uint8Array(n); crypto.getRandomValues(u); return u; }
+  async function sha256(bytes){ const h=await crypto.subtle.digest('SHA-256', bytes); return new Uint8Array(h); }
+
+  // IndexedDB (folder handle)
+  const idb = {
+    db:null,
+    async open(){
+      if (this.db) return this.db;
+      this.db = await new Promise((resolve, reject) => {
+        const req = indexedDB.open('whriter_db', 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('kv');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      return this.db;
+    },
+    async set(key, val){
+      const db = await this.open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('kv','readwrite');
+        tx.objectStore('kv').put(val, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    },
+    async get(key){
+      const db = await this.open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('kv','readonly');
+        const req = tx.objectStore('kv').get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+  };
+
+  // Crypto
+  const CRYPTO_META_KEY = 'whriter_meta_v1';
+  async function deriveKeyFromPassword(password, masterSaltBytes, iterations){
+    const baseKey = await crypto.subtle.importKey('raw', enc.encode(password), {name:'PBKDF2'}, false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name:'PBKDF2', salt: masterSaltBytes, iterations, hash:'SHA-256' },
+      baseKey, 256
+    );
+    const raw = new Uint8Array(bits);
+    const key = await crypto.subtle.importKey('raw', raw, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
+    return { key, raw };
+  }
+  async function encryptText(aesKey, plaintext){
+    const iv = randBytes(12);
+    const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, aesKey, enc.encode(plaintext));
+    return { ivB64: b64(iv), cipherB64: b64(new Uint8Array(ct)) };
+  }
+  async function decryptText(aesKey, ivB64, cipherB64){
+    const iv = ub64(ivB64);
+    const ct = ub64(cipherB64);
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv}, aesKey, ct);
+    return dec.decode(pt);
+  }
+  function loadMeta(){
+    try{
+      const raw = localStorage.getItem(CRYPTO_META_KEY);
+      if (!raw) return null;
+      const meta = JSON.parse(raw);
+      if (!meta || meta.v !== 1) return null;
+      return meta;
+    }catch{ return null; }
+  }
+  function hasMeta(){ return !!loadMeta(); }
+  async function saveMeta(meta){ localStorage.setItem(CRYPTO_META_KEY, JSON.stringify(meta)); }
+
+  // Files
+  const NOTE_EXT = '.whriter.json';
+  function sanitizeFileBase(name){
+    const s=(name||'').trim().replace(/\s+/g,' ');
+    const cleaned=s.replace(/[<>:"/\\|?*\u0000-\u001F]/g,'_').slice(0,80);
+    return cleaned || 'Untitled';
+  }
+  function titleToFileName(titleBase){ return sanitizeFileBase(titleBase) + NOTE_EXT; }
+  function prettyNameFromFile(fileName){ return (fileName||'').endsWith(NOTE_EXT) ? fileName.slice(0, -NOTE_EXT.length) : fileName; }
+  function nowISO(){ return new Date().toISOString(); }
+
+  // Pages packed into plaintext JSON
+  function pagesToPlaintext(pages){ return JSON.stringify({ v:1, pages }); }
+  function plaintextToPages(text){
+    const t = (text ?? '').trim();
+    if (t.startsWith('{') && t.endsWith('}')){
+      try{
+        const obj = JSON.parse(t);
+        if (obj && obj.v === 1 && Array.isArray(obj.pages)) return obj.pages.map(p => String(p ?? ''));
+      }catch{}
+    }
+    return [String(text ?? '')];
+  }
+
+  // State
+  const state = {
+    locked:true,
+    aesKey:null,
+    folderHandle:null,
+    folderName:null,
+    files: [], // { fileName, handle, title, modified }
+    current: { fileName:null, fileHandle:null, created:null, modified:null, dirty:false, pages:[''], pageIndex:0 },
+    settings: { theme:'dark', fontSize:16, margin:14 }
+  };
+
+  // UI
+  const ui = {
+    body: document.body,
+    fsExitBtn: $('fsExitBtn'),
+
+    sidebar: $('sidebar'),
+    rightbar: $('rightbar'),
+    editorCol: $('editorCol'),
+
+    fileList: $('fileList'),
+    search: $('search'),
+    title: $('title'),
+    editor: $('editor'),
+    status: $('status'),
+    filenameHint: $('filenameHint'),
+    folderPill: $('folderPill'),
+
+    toggleSidebarBtn: $('toggleSidebarBtn'),
+    toggleWritingBtn: $('toggleWritingBtn'),
+    toggleRightBtn: $('toggleRightBtn'),
+
+    themeBtn: $('themeBtn'),
+    newBtn: $('newBtn'),
+    saveBtn: $('saveBtn'),
+    exportBtn: $('exportBtn'),
+    pickFolderBtn: $('pickFolderBtn'),
+    lockBtn: $('lockBtn'),
+
+    refreshBtn: $('refreshBtn'),
+    deleteBtn: $('deleteBtn'),
+
+    prevPageBtn: $('prevPageBtn'),
+    nextPageBtn: $('nextPageBtn'),
+    addPageBtn: $('addPageBtn'),
+    delPageBtn: $('delPageBtn'),
+    pageInfo: $('pageInfo'),
+
+    fontSize: $('fontSize'),
+    fontSizeVal: $('fontSizeVal'),
+    margin: $('margin'),
+    marginVal: $('marginVal'),
+
+    fsWriteBtn: $('fsWriteBtn'),
+
+    modalBack: $('modalBack'),
+    modalTitle: $('modalTitle'),
+    setupBlock: $('setupBlock'),
+    unlockBlock: $('unlockBlock'),
+    setupPw: $('setupPw'),
+    unlockPw: $('unlockPw'),
+    setupPickFolder: $('setupPickFolder'),
+    setupFolderLabel: $('setupFolderLabel'),
+    unlockHint: $('unlockHint'),
+    modalCancel: $('modalCancel'),
+    modalOk: $('modalOk'),
+    apiHint: $('apiHint'),
+  };
+
+  function hasFSAccess(){ return !!window.showDirectoryPicker; }
+  async function ensureFolderPermission(handle, write=true){
+    if (!handle) return false;
+    const opts = { mode: write ? 'readwrite' : 'read' };
+    if ((await handle.queryPermission(opts)) === 'granted') return true;
+    const res = await handle.requestPermission(opts);
+    return res === 'granted';
+  }
+
+  function setFolderPill(){ ui.folderPill.textContent = state.folderName ? `Folder: ${state.folderName}` : 'No folder'; }
+  function setStatus(text){ ui.status.textContent = text; }
+
+  function markDirty(isDirty){
+    state.current.dirty = isDirty;
+    ui.saveBtn.disabled = state.locked || !isDirty;
+    setStatus(state.locked ? 'Locked.' : (isDirty ? 'Unsaved.' : 'Saved.'));
+  }
+
+  function setLockedUI(isLocked){
+    state.locked = isLocked;
+
+    ui.title.disabled = isLocked;
+    ui.editor.disabled = isLocked;
+
+    ui.newBtn.disabled = isLocked;
+    ui.refreshBtn.disabled = isLocked;
+    ui.search.disabled = isLocked;
+
+    ui.saveBtn.disabled = isLocked || !state.current.dirty;
+    ui.exportBtn.disabled = isLocked || !state.current.fileName;
+    ui.deleteBtn.disabled = isLocked || !state.current.fileName;
+
+    ui.prevPageBtn.disabled = isLocked;
+    ui.nextPageBtn.disabled = isLocked;
+    ui.addPageBtn.disabled = isLocked;
+    ui.delPageBtn.disabled = isLocked;
+
+    ui.lockBtn.textContent = isLocked ? 'Locked' : 'Lock';
+    renderPageInfo();
+  }
+
+  // Settings
+  function loadSettings(){
+    try{
+      const raw = localStorage.getItem('whriter_settings_v1');
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (!s) return;
+      if (s.theme === 'light' || s.theme === 'dark') state.settings.theme = s.theme;
+      if (Number.isFinite(s.fontSize)) state.settings.fontSize = Math.min(28, Math.max(12, s.fontSize));
+      if (Number.isFinite(s.margin)) state.settings.margin = Math.min(80, Math.max(0, s.margin));
+    }catch{}
+  }
+  function saveSettings(){ localStorage.setItem('whriter_settings_v1', JSON.stringify(state.settings)); }
+  function applySettings(){
+    ui.body.setAttribute('data-theme', state.settings.theme);
+    ui.themeBtn.textContent = (state.settings.theme === 'dark') ? 'Light' : 'Dark';
+
+    ui.fontSize.value = String(state.settings.fontSize);
+    ui.fontSizeVal.textContent = String(state.settings.fontSize);
+    ui.margin.value = String(state.settings.margin);
+    ui.marginVal.textContent = String(state.settings.margin);
+
+    ui.editor.style.fontSize = state.settings.fontSize + 'px';
+    ui.editor.style.paddingLeft = state.settings.margin + 'px';
+    ui.editor.style.paddingRight = state.settings.margin + 'px';
+  }
+
+  // Pages
+  function commitEditorToCurrentPage(){
+    const i = state.current.pageIndex;
+    if (i < 0 || i >= state.current.pages.length) return;
+    state.current.pages[i] = ui.editor.value;
+  }
+  function renderPageInfo(){
+    const n = state.current.pages.length;
+    const i = state.current.pageIndex;
+    ui.pageInfo.textContent = state.locked ? 'Page — / —' : `Page ${i+1} / ${n}`;
+    ui.delPageBtn.disabled = state.locked || (n <= 1);
+    ui.prevPageBtn.disabled = state.locked || (i <= 0);
+    ui.nextPageBtn.disabled = state.locked || (i >= n-1);
+  }
+  function gotoPage(index){
+    commitEditorToCurrentPage();
+    const n = state.current.pages.length;
+    state.current.pageIndex = Math.max(0, Math.min(n-1, index));
+    ui.editor.value = state.current.pages[state.current.pageIndex] ?? '';
+    renderPageInfo();
+  }
+  function addPage(){
+    commitEditorToCurrentPage();
+    const i = state.current.pageIndex;
+    state.current.pages.splice(i+1, 0, '');
+    state.current.pageIndex = i+1;
+    ui.editor.value = '';
+    markDirty(true);
+    renderPageInfo();
+    ui.editor.focus();
+  }
+  function deletePage(){
+    if (state.current.pages.length <= 1) return;
+    commitEditorToCurrentPage();
+    const i = state.current.pageIndex;
+    state.current.pages.splice(i, 1);
+    state.current.pageIndex = Math.max(0, i-1);
+    ui.editor.value = state.current.pages[state.current.pageIndex] ?? '';
+    markDirty(true);
+    renderPageInfo();
+  }
+
+  // List/render
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  function renderList(){
+    const q = ui.search.value.trim().toLowerCase();
+    ui.fileList.innerHTML = '';
+
+    const files = state.files
+      .filter(f => !q || (f.title || prettyNameFromFile(f.fileName)).toLowerCase().includes(q))
+      .sort((a,b) => (a.title||'').localeCompare(b.title||'') || a.fileName.localeCompare(b.fileName));
+
+    for (const f of files){
+      const name = f.title || prettyNameFromFile(f.fileName) || 'note';
+      const div = document.createElement('div');
+      div.className = 'item' + (f.fileName === state.current.fileName ? ' active' : '');
+      const mod = f.modified ? new Date(f.modified).toLocaleDateString() : '';
+      div.innerHTML = `<span class="dot"></span><span class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="sub">${escapeHtml(mod)}</span>`;
+      div.onclick = () => openNoteByFileName(f.fileName);
+      ui.fileList.appendChild(div);
+    }
+  }
+
+  async function readNoteShell(fileHandle){
+    const file = await fileHandle.getFile();
+    const text = await file.text();
+    const obj = JSON.parse(text);
+    if (!obj || obj.v !== 1) throw new Error('Bad file');
+    return obj;
+  }
+
+  async function refreshFiles(){
+    if (!state.folderHandle){
+      state.files = [];
+      renderList();
+      return;
+    }
+    const ok = await ensureFolderPermission(state.folderHandle, true);
+    if (!ok){ setStatus('Folder permission denied.'); return; }
+
+    const out = [];
+    for await (const [fileName, handle] of state.folderHandle.entries()){
+      if (handle.kind !== 'file') continue;
+      if (!fileName.endsWith('.whriter.json')) continue;
+      try{
+        const shell = await readNoteShell(handle);
+        out.push({ fileName, handle, title: shell.title || prettyNameFromFile(fileName), modified: shell.modified || null });
+      }catch{
+        out.push({ fileName, handle, title: prettyNameFromFile(fileName), modified: null });
+      }
+    }
+    state.files = out;
+    renderList();
+    setStatus(`Loaded ${out.length} note(s).`);
+  }
+
+  // Default name: note / note_#
+  function nextNoteTitle(){
+    const used = new Set(state.files.map(f => (f.title || prettyNameFromFile(f.fileName) || '').trim().toLowerCase()));
+    if (!used.has('note')) return 'note';
+    // find smallest missing note_#
+    for (let i=1; i<100000; i++){
+      const t = `note_${i}`;
+      if (!used.has(t)) return t;
+    }
+    return `note_${Date.now()}`;
+  }
+
+  // Note I/O
+  async function writeNoteFile(folderHandle, fileName, obj){
+    const h = await folderHandle.getFileHandle(fileName, { create:true });
+    const w = await h.createWritable();
+    await w.write(JSON.stringify(obj));
+    await w.close();
+    return h;
+  }
+
+  async function openNoteByFileName(fileName){
+    if (state.current.dirty){
+      const discard = confirm('You have unsaved changes. Discard and open another note?');
+      if (!discard) return;
+    }
+    const entry = state.files.find(f => f.fileName === fileName);
+    if (!entry) return;
+
+    const shell = await readNoteShell(entry.handle);
+    const plaintext = await decryptText(state.aesKey, shell.ivB64, shell.cipherB64);
+    const pages = plaintextToPages(plaintext);
+
+    state.current.fileName = fileName;
+    state.current.fileHandle = entry.handle;
+    state.current.created = shell.created || null;
+    state.current.modified = shell.modified || null;
+    state.current.pages = pages.length ? pages : [''];
+    state.current.pageIndex = 0;
+
+    ui.title.value = shell.title || prettyNameFromFile(fileName) || 'note';
+    ui.filenameHint.textContent = prettyNameFromFile(fileName);
+    ui.editor.value = state.current.pages[0] ?? '';
+
+    markDirty(false);
+    ui.exportBtn.disabled = state.locked || !state.current.fileName;
+    ui.deleteBtn.disabled = state.locked || !state.current.fileName;
+
+    renderPageInfo();
+    renderList();
+    setStatus('Opened.');
+  }
+
+  async function newNote(){
+    if (state.current.dirty){
+      const proceed = confirm('You have unsaved changes. Discard and create a new note?');
+      if (!proceed) return;
+    }
+    state.current.fileName = null;
+    state.current.fileHandle = null;
+    state.current.created = null;
+    state.current.modified = null;
+    state.current.pages = [''];
+    state.current.pageIndex = 0;
+
+    ui.title.value = nextNoteTitle();
+    ui.editor.value = '';
+    ui.filenameHint.textContent = '—';
+
+    markDirty(true);
+    ui.exportBtn.disabled = true;
+    ui.deleteBtn.disabled = true;
+
+    renderPageInfo();
+    renderList();
+    ui.editor.focus();
+  }
+
+  async function saveNote(){
+    if (!state.folderHandle){ alert('No folder selected.'); return; }
+    const ok = await ensureFolderPermission(state.folderHandle, true);
+    if (!ok){ alert('Folder permission denied.'); return; }
+
+    commitEditorToCurrentPage();
+
+    const title = (ui.title.value.trim() || 'note');
+    const fileNameNew = titleToFileName(title);
+    const plaintext = pagesToPlaintext(state.current.pages);
+
+    const { ivB64, cipherB64 } = await encryptText(state.aesKey, plaintext);
+    const created = state.current.created || nowISO();
+    const modified = nowISO();
+
+    const shell = { v:1, title, created, modified, ivB64, cipherB64 };
+    const newHandle = await writeNoteFile(state.folderHandle, fileNameNew, shell);
+
+    if (state.current.fileName && state.current.fileName !== fileNameNew){
+      try{ await state.folderHandle.removeEntry(state.current.fileName); }catch{}
+    }
+
+    state.current.fileName = fileNameNew;
+    state.current.fileHandle = newHandle;
+    state.current.created = created;
+    state.current.modified = modified;
+
+    ui.filenameHint.textContent = prettyNameFromFile(fileNameNew);
+
+    await refreshFiles();
+    markDirty(false);
+
+    ui.exportBtn.disabled = false;
+    ui.deleteBtn.disabled = false;
+  }
+
+  async function exportTxt(){
+    commitEditorToCurrentPage();
+    const title = (ui.title.value.trim() || 'note');
+    const suggested = sanitizeFileBase(title) + '.txt';
+    const text = state.current.pages.join('\n\n');
+
+    if (window.showSaveFilePicker){
+      try{
+        const h = await window.showSaveFilePicker({
+          suggestedName: suggested,
+          types: [{ description:'Text', accept:{ 'text/plain':['.txt'] } }]
+        });
+        const w = await h.createWritable();
+        await w.write(text);
+        await w.close();
+        setStatus('Exported.');
+        return;
+      }catch{}
+    }
+
+    const blob = new Blob([text], { type:'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = suggested;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2500);
+    setStatus('Exported (download).');
+  }
+
+  async function deleteCurrent(){
+    if (!state.current.fileName) return;
+    const ok = confirm(`Delete "${prettyNameFromFile(state.current.fileName)}"?`);
+    if (!ok) return;
+
+    try{ await state.folderHandle.removeEntry(state.current.fileName); }
+    catch{ alert('Could not delete (permission or folder issue).'); return; }
+
+    await refreshFiles();
+    await newNote();
+    markDirty(false);
+    setStatus('Deleted.');
+  }
+
+  // Fullscreen writing (layout) + optional browser fullscreen
+  function enterFullscreenWriting(){
+    document.body.classList.add('fs-write');
+    if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+    ui.editor.focus();
+  }
+  function exitFullscreenWriting(tryExitBrowserFs=true){
+    document.body.classList.remove('fs-write');
+    if (tryExitBrowserFs && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+  }
+
+  // Modal
+  let setupFolderHandleTemp = null;
+
+  function showModal(mode){
+    ui.modalBack.style.display = 'flex';
+    if (mode === 'setup'){
+      ui.modalTitle.textContent = 'Set up Whriter';
+      ui.setupBlock.style.display = '';
+      ui.unlockBlock.style.display = 'none';
+      ui.modalOk.textContent = 'Finish';
+      ui.apiHint.textContent = hasFSAccess() ? '' : 'Folder access may not work in this browser. Try Chrome/Edge.';
+    }else{
+      ui.modalTitle.textContent = 'Unlock Whriter';
+      ui.setupBlock.style.display = 'none';
+      ui.unlockBlock.style.display = '';
+      ui.modalOk.textContent = 'Unlock';
+      ui.apiHint.textContent = hasFSAccess() ? '' : 'Folder access may not work in this browser. Try Chrome/Edge.';
+    }
+  }
+  function hideModal(){ ui.modalBack.style.display = 'none'; }
+
+  async function pickFolderForSetup(){
+    if (!hasFSAccess()){ alert('Folder access not supported here. Try Chrome/Edge.'); return; }
+    const h = await showDirectoryPicker({ mode:'readwrite' });
+    setupFolderHandleTemp = h;
+    ui.setupFolderLabel.textContent = `Chosen: ${h.name}`;
+  }
+
+  async function pickFolderAnytime(){
+    if (!hasFSAccess()){ alert('Folder access not supported here. Try Chrome/Edge.'); return; }
+    const h = await showDirectoryPicker({ mode:'readwrite' });
+    const ok = await ensureFolderPermission(h, true);
+    if (!ok){ alert('Folder permission denied.'); return; }
+    state.folderHandle = h;
+    state.folderName = h.name;
+    await idb.set('notesFolder', h);
+    setFolderPill();
+    await refreshFiles();
+  }
+
+  async function finishSetup(){
+    const pw = ui.setupPw.value;
+    if (!pw || pw.length < 6){ alert('Use at least 6 characters.'); return; }
+    if (!setupFolderHandleTemp){ alert('Choose a folder.'); return; }
+
+    const ok = await ensureFolderPermission(setupFolderHandleTemp, true);
+    if (!ok){ alert('Folder permission denied.'); return; }
+
+    const iterations = 200000;
+    const masterSalt = randBytes(16);
+    const { key, raw } = await deriveKeyFromPassword(pw, masterSalt, iterations);
+    const verifier = await sha256(raw);
+
+    await saveMeta({ v:1, kdf:{iter:iterations}, masterSaltB64:b64(masterSalt), verifierB64:b64(verifier) });
+    await idb.set('notesFolder', setupFolderHandleTemp);
+
+    state.aesKey = key;
+    state.folderHandle = setupFolderHandleTemp;
+    state.folderName = setupFolderHandleTemp.name;
+    setFolderPill();
+
+    hideModal();
+    setLockedUI(false);
+    setStatus('Ready.');
+    await refreshFiles();
+    await newNote();
+  }
+
+  async function unlock(){
+    const meta = loadMeta();
+    if (!meta) return;
+
+    const pw = ui.unlockPw.value;
+    if (!pw) return;
+
+    const masterSalt = ub64(meta.masterSaltB64);
+    const iterations = meta.kdf?.iter || 200000;
+    const { key, raw } = await deriveKeyFromPassword(pw, masterSalt, iterations);
+    const verifier = await sha256(raw);
+
+    if (b64(verifier) !== meta.verifierB64){
+      ui.unlockHint.textContent = 'Wrong password.';
+      ui.unlockHint.style.color = 'var(--dangerline)';
+      return;
+    }
+
+    let folderHandle = await idb.get('notesFolder');
+    if (!folderHandle && hasFSAccess()){
+      alert('Please choose your notes folder.');
+      folderHandle = await showDirectoryPicker({ mode:'readwrite' });
+      await idb.set('notesFolder', folderHandle);
+    }
+
+    if (folderHandle){
+      const ok = await ensureFolderPermission(folderHandle, true);
+      if (!ok) alert('Folder permission denied. You may need to reselect the folder.');
+    }
+
+    state.aesKey = key;
+    state.folderHandle = folderHandle || null;
+    state.folderName = folderHandle?.name || null;
+    setFolderPill();
+
+    hideModal();
+    setLockedUI(false);
+    setStatus('Ready.');
+
+    await refreshFiles();
+    if (state.files.length) await openNoteByFileName(state.files[0].fileName);
+    else { await newNote(); markDirty(false); }
+  }
+
+  function lockNow(){
+    state.aesKey = null;
+    state.files = [];
+    state.current = { fileName:null, fileHandle:null, created:null, modified:null, dirty:false, pages:[''], pageIndex:0 };
+
+    ui.title.value = '';
+    ui.editor.value = '';
+    ui.filenameHint.textContent = '—';
+    ui.search.value = '';
+    ui.fileList.innerHTML = '';
+
+    exitFullscreenWriting(false);
+
+    setLockedUI(true);
+    setStatus('Locked.');
+    showModal('unlock');
+    ui.unlockPw.value = '';
+    ui.unlockHint.textContent = '';
+    ui.unlockPw.focus();
+  }
+
+  // Events
+  ui.toggleSidebarBtn.onclick = () => ui.sidebar.classList.toggle('hidden');
+  ui.toggleWritingBtn.onclick = () => ui.editorCol.classList.toggle('hidden');
+  ui.toggleRightBtn.onclick = () => ui.rightbar.classList.toggle('hidden');
+
+  ui.themeBtn.onclick = () => { state.settings.theme = (state.settings.theme === 'dark') ? 'light' : 'dark'; saveSettings(); applySettings(); };
+
+  ui.newBtn.onclick = () => newNote();
+  ui.saveBtn.onclick = () => saveNote();
+  ui.exportBtn.onclick = () => exportTxt();
+  ui.pickFolderBtn.onclick = () => pickFolderAnytime();
+  ui.lockBtn.onclick = () => lockNow();
+  ui.refreshBtn.onclick = () => refreshFiles();
+  ui.deleteBtn.onclick = () => deleteCurrent();
+
+  ui.search.oninput = () => renderList();
+
+  ui.title.addEventListener('input', () => markDirty(true));
+  ui.editor.addEventListener('input', () => markDirty(true));
+
+  ui.prevPageBtn.onclick = () => gotoPage(state.current.pageIndex - 1);
+  ui.nextPageBtn.onclick = () => gotoPage(state.current.pageIndex + 1);
+  ui.addPageBtn.onclick = () => addPage();
+  ui.delPageBtn.onclick = () => deletePage();
+
+  ui.fontSize.oninput = () => { state.settings.fontSize = Number(ui.fontSize.value); saveSettings(); applySettings(); };
+  ui.margin.oninput = () => { state.settings.margin = Number(ui.margin.value); saveSettings(); applySettings(); };
+
+  ui.fsWriteBtn.onclick = () => enterFullscreenWriting();
+  ui.fsExitBtn.onclick = () => exitFullscreenWriting();
+
+  ui.setupPickFolder.onclick = () => pickFolderForSetup();
+  ui.modalCancel.onclick = () => { hideModal(); setLockedUI(true); setStatus('Locked.'); };
+  ui.modalOk.onclick = async () => { if (!hasMeta()) await finishSetup(); else await unlock(); };
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape'){
+      if (document.body.classList.contains('fs-write')) exitFullscreenWriting(false);
+      return;
+    }
+    if (state.locked) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'){ e.preventDefault(); saveNote(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n'){ e.preventDefault(); newNote(); }
+  });
+
+  // Boot
+  async function boot(){
+    loadSettings();
+    applySettings();
+
+    setLockedUI(true);
+    setFolderPill();
+
+    if (!hasMeta()){
+      showModal('setup');
+      ui.setupPw.value = '';
+      ui.setupFolderLabel.textContent = 'No folder chosen';
+      setupFolderHandleTemp = null;
+      ui.setupPw.focus();
+    }else{
+      showModal('unlock');
+      ui.unlockPw.value = '';
+      ui.unlockHint.textContent = '';
+      ui.unlockPw.focus();
+    }
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
