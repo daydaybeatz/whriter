@@ -490,6 +490,7 @@
     apiHint: $('apiHint'),
   };
 
+  const FS_UNSUPPORTED_TEXT = 'Folder access not supported in this browser. Try Chrome/Edge.';
   function hasFSAccess(){ return !!window.showDirectoryPicker; }
   async function ensureFolderPermission(handle, write=true){
     if (!handle) return false;
@@ -867,23 +868,44 @@
       ui.setupBlock.style.display = '';
       ui.unlockBlock.style.display = 'none';
       ui.modalOk.textContent = 'Finish';
-      ui.apiHint.textContent = hasFSAccess() ? '' : 'Folder access may not work in this browser. Try Chrome/Edge.';
+      ui.apiHint.textContent = hasFSAccess() ? '' : FS_UNSUPPORTED_TEXT;
     }else{
       ui.modalTitle.textContent = 'Unlock Whriter';
       ui.setupBlock.style.display = 'none';
       ui.unlockBlock.style.display = '';
       ui.modalOk.textContent = 'Unlock';
-      ui.apiHint.textContent = hasFSAccess() ? '' : 'Folder access may not work in this browser. Try Chrome/Edge.';
+      ui.apiHint.textContent = hasFSAccess() ? '' : FS_UNSUPPORTED_TEXT;
     }
+    updateFolderControls();
   }
   function hideModal(){ ui.modalBack.style.display = 'none'; }
+
+  function updateFolderControls(){
+    const supportsFolder = hasFSAccess();
+    const isLocal = state.storageMode === 'local';
+
+    if (isLocal){
+      ui.pickFolderBtn.style.display = 'none';
+      ui.setupPickFolder.style.display = 'none';
+      return;
+    }
+
+    ui.pickFolderBtn.style.display = '';
+    ui.setupPickFolder.style.display = '';
+    ui.pickFolderBtn.disabled = !supportsFolder;
+    ui.setupPickFolder.disabled = !supportsFolder;
+    const titleText = supportsFolder ? '' : FS_UNSUPPORTED_TEXT;
+    ui.pickFolderBtn.title = titleText;
+    ui.setupPickFolder.title = titleText;
+    ui.apiHint.textContent = supportsFolder ? '' : FS_UNSUPPORTED_TEXT;
+  }
 
   async function pickFolderForSetup(){
     if (state.storageMode === 'local'){
       alert('Folder selection is disabled. Notes are saved in local storage.');
       return;
     }
-    if (!hasFSAccess()){ alert('Folder access not supported here. Try Chrome/Edge.'); return; }
+    if (!hasFSAccess()){ ui.apiHint.textContent = FS_UNSUPPORTED_TEXT; return; }
     const h = await showDirectoryPicker({ mode:'readwrite' });
     setupFolderHandleTemp = h;
     ui.setupFolderLabel.textContent = `Chosen: ${h.name}`;
@@ -894,7 +916,7 @@
       alert('Folder selection is disabled. Notes are saved in local storage.');
       return;
     }
-    if (!hasFSAccess()){ alert('Folder access not supported here. Try Chrome/Edge.'); return; }
+    if (!hasFSAccess()){ setStatus(FS_UNSUPPORTED_TEXT); return; }
     const h = await showDirectoryPicker({ mode:'readwrite' });
     const ok = await ensureFolderPermission(h, true);
     if (!ok){ alert('Folder permission denied.'); return; }
@@ -1058,8 +1080,7 @@
   // Boot
   async function boot(){
     state.storageMode = 'local';
-    ui.pickFolderBtn.style.display = 'none';
-    ui.setupPickFolder.style.display = 'none';
+    updateFolderControls();
     ui.setupFolderLabel.textContent = 'Notes are stored in this browser.';
 
     loadSettings();
