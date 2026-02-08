@@ -59,14 +59,15 @@
     .item .name{ flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .item .sub{ font-size:12px; color:var(--muted); white-space:nowrap; }
 
-    .main{ flex:1; display:flex; flex-direction:column; padding:10px; gap:10px; min-width:0; }
+    .main{ flex:1; display:flex; flex-direction:column; padding:10px; gap:10px; min-width:0; min-height:0; height:100%; }
     .row{ display:flex; gap:10px; align-items:center; }
     .grow{ flex:1 1 auto; min-width:0; }
     .hint{ color:var(--muted); font-size:12px; }
     .status{ padding:8px 10px; border:1px solid var(--line); border-radius:10px; background: color-mix(in srgb, var(--panel) 70%, var(--bg)); color:var(--muted); }
-    .editorWrap{ flex:1 1 auto; display:flex; gap:10px; min-height:0; min-width:0; }
+    .editorWrap{ flex:1 1 auto; display:flex; gap:10px; min-height:0; min-width:0; align-items:stretch; }
 
     .editorCol{ flex:1 1 auto; display:flex; flex-direction:column; gap:10px; min-width:0; min-height:0; }
+    .editorCol textarea{ flex:1 1 auto; min-height:0; }
     .editorCol.hidden{ display:none; }
 
     .pagebar{
@@ -489,7 +490,7 @@
 
   const PAGE_SEPARATOR = '——';
   const EXPORT_SEPARATOR = `\n\n${PAGE_SEPARATOR}\n\n`;
-  const IMPORT_SEPARATOR = new RegExp(`\\n\\s*${PAGE_SEPARATOR}\\s*\\n`, 'g');
+  const IMPORT_SEPARATOR = /\n\s*[—-]{2,}\s*\n/g;
   function splitImportedText(text){
     const normalized = String(text ?? '').replace(/\r\n/g, '\n');
     const parts = normalized.split(IMPORT_SEPARATOR);
@@ -622,6 +623,17 @@
     ui.lockBtn.textContent = isLocked ? 'Locked' : 'Lock';
     if (isLocked) setViewMode('write');
     renderPageInfo();
+  }
+
+  function closeAllMenus(){
+    ui.sidebar.classList.add('hidden');
+    ui.rightbar.classList.add('hidden');
+    ui.editorCol.classList.remove('hidden');
+
+    ui.sidebar.classList.remove('collapsed');
+    ui.rightbar.classList.remove('collapsed');
+    ui.collapseSidebarBtn.textContent = '▾';
+    ui.collapseRightBtn.textContent = '▾';
   }
 
   // Settings
@@ -1319,6 +1331,7 @@
 
     loadSettings();
     applySettings();
+    closeAllMenus();
 
     setLockedUI(true);
     setFolderPill();
