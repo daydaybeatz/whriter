@@ -14,6 +14,8 @@
       --btn:#f2f4fa; --btn2:#e8efff; --dangerbg:#ffecec; --dangerline:#ffb4b4; --input:#ffffff;
     }
     *{ box-sizing:border-box; }
+    :root{ --topbar-h:52px; }
+    html, body{ height:100%; }
     body{ margin:0; font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--text); }
     button,input,textarea{ font:inherit; color:inherit; }
     button{ background:var(--btn); border:1px solid var(--line); padding:8px 10px; border-radius:10px; cursor:pointer; }
@@ -29,13 +31,15 @@
       border-bottom:1px solid var(--line);
       background: color-mix(in srgb, var(--bg) 80%, transparent);
       position:sticky; top:0; backdrop-filter: blur(6px);
+      padding-left: calc(10px + env(safe-area-inset-left));
+      padding-right: calc(10px + env(safe-area-inset-right));
     }
     .brand{ font-weight:700; letter-spacing:.2px; margin-left:2px; }
     .spacer{ flex:1; }
     .pill{ font-size:12px; padding:4px 8px; border:1px solid var(--line); border-radius:999px; color:var(--muted); }
     .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-    .wrap{ display:flex; height: calc(100vh - 52px); }
+    .wrap{ display:flex; height: calc(100vh - var(--topbar-h)); height: calc(100dvh - var(--topbar-h)); }
     .sidebar{
       width:280px; min-width:240px; max-width:40vw;
       border-right:1px solid var(--line); background:var(--panel);
@@ -105,7 +109,7 @@
     body.fs-write .rightbar,
     body.fs-write .row,
     body.fs-write .hint { display:none !important; }
-    body.fs-write .wrap { height: 100vh; }
+    body.fs-write .wrap { height: 100vh; height: 100dvh; }
     body.fs-write .main { padding: 10px; gap:10px; }
     body.fs-write .editorWrap { height: 100%; }
     body.fs-write .editorCol { height: 100%; }
@@ -116,6 +120,39 @@
       display:none;
     }
     body.fs-write .fsExitBtn{ display:inline-flex; }
+
+    @media (max-width: 980px){
+      :root{ --topbar-h: auto; }
+      .topbar{
+        flex-wrap: wrap;
+        position:sticky;
+        gap:8px;
+      }
+      .topbar .pill{ order:3; }
+      .topbar .spacer{ display:none; }
+      .wrap{ flex-direction: column; height:auto; min-height: calc(100dvh - 100px); }
+      .sidebar,
+      .rightbar{
+        width:100%;
+        max-width:none;
+        min-width:0;
+        border-left:0;
+        border-right:0;
+      }
+      .sidebar{ border-bottom:1px solid var(--line); }
+      .rightbar{ border-top:1px solid var(--line); border-radius:12px; }
+      .editorWrap{ flex-direction:column; }
+      .pagebar{ flex-wrap:wrap; }
+      .pagebar .pageTitle{ flex-basis:100%; }
+    }
+
+    @media (max-width: 560px){
+      .topbar button{ flex:1 1 auto; }
+      .topbar .brand{ width:100%; }
+      .row{ flex-direction:column; align-items:stretch; }
+      .status{ width:100%; }
+      .modal{ width:100%; }
+    }
   </style>
 </head>
 
@@ -216,18 +253,18 @@
       <h2 id="modalTitle">Welcome</h2>
 
       <div id="setupBlock">
-        <p>First run: choose a password and a folder for your notes.</p>
-        <label class="hint">Password</label>
-        <input id="setupPw" type="password" autocomplete="new-password" />
+        <p>First run: choose a PIN and a folder for your notes.</p>
+        <label class="hint">PIN (4+ digits)</label>
+        <input id="setupPw" type="password" inputmode="numeric" pattern="[0-9]*" minlength="4" autocomplete="new-password" />
         <div style="height:10px"></div>
         <button id="setupPickFolder" class="primary">Choose folder…</button>
         <div class="hint" id="setupFolderLabel" style="margin-top:6px;">No folder chosen</div>
       </div>
 
       <div id="unlockBlock" style="display:none;">
-        <p>Enter your password.</p>
-        <label class="hint">Password</label>
-        <input id="unlockPw" type="password" autocomplete="current-password" />
+        <p>Enter your PIN.</p>
+        <label class="hint">PIN (4+ digits)</label>
+        <input id="unlockPw" type="password" inputmode="numeric" pattern="[0-9]*" minlength="4" autocomplete="current-password" />
         <p class="hint" id="unlockHint"></p>
       </div>
 
@@ -785,9 +822,11 @@
     await refreshFiles();
   }
 
+  function isValidPin(pin){ return /^\d{4,}$/.test(pin || ''); }
+
   async function finishSetup(){
     const pw = ui.setupPw.value;
-    if (!pw || pw.length < 6){ alert('Use at least 6 characters.'); return; }
+    if (!isValidPin(pw)){ alert('Use at least 4 digits for your PIN.'); return; }
     if (!setupFolderHandleTemp){ alert('Choose a folder.'); return; }
 
     const ok = await ensureFolderPermission(setupFolderHandleTemp, true);
@@ -819,6 +858,11 @@
 
     const pw = ui.unlockPw.value;
     if (!pw) return;
+    if (!isValidPin(pw)){
+      ui.unlockHint.textContent = 'PIN must be at least 4 digits.';
+      ui.unlockHint.style.color = 'var(--dangerline)';
+      return;
+    }
 
     const masterSalt = ub64(meta.masterSaltB64);
     const iterations = meta.kdf?.iter || 200000;
@@ -826,7 +870,7 @@
     const verifier = await sha256(raw);
 
     if (b64(verifier) !== meta.verifierB64){
-      ui.unlockHint.textContent = 'Wrong password.';
+      ui.unlockHint.textContent = 'Wrong PIN.';
       ui.unlockHint.style.color = 'var(--dangerline)';
       return;
     }
