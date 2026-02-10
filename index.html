@@ -1334,6 +1334,13 @@
   ui.setupPickFolder.onclick = () => pickFolderForSetup();
   ui.modalCancel.onclick = () => { hideModal(); setLockedUI(true); setStatus('Locked.'); };
   ui.modalOk.onclick = async () => { if (!hasMeta()) await finishSetup(); else await unlock(); };
+  const submitModalOnEnter = (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    ui.modalOk.click();
+  };
+  ui.setupPw.addEventListener('keydown', submitModalOnEnter);
+  ui.unlockPw.addEventListener('keydown', submitModalOnEnter);
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape'){
